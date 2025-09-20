@@ -199,3 +199,10 @@ This innovative accessibility tool demonstrates how creative programming can bre
 
 Making the visual world accessible, one Braille dot at a time.
 
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/9d10b4a0-78bf-4fae-bdc4-765e48fdf264" />
+
+
+
+
+
+
