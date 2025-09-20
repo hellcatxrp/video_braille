@@ -170,19 +170,23 @@ cd video_braille
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
-📜 License
-This project is licensed under the MIT License - see the LICENSE file for details.
 
-👤 Author
+## Acknowledgements
+
+A significant portion of the initial codebase for this project was generated with the assistance of OpenAI's Codex. Subsequent edits were made with the help of Anthropic's Claude.
+
+👤 Human Author
 hellcatxrp
 
 GitHub: @hellcatxrp
 Repository: video_braille
-🙏 Acknowledgments
+
+🙏 Other Acknowledgments
 OpenCV Community for robust video processing capabilities
 Unicode Consortium for Braille character standardization
 FFmpeg Project for multimedia framework support
 Accessibility Advocates who inspire inclusive technology development
+
 🐛 Issues & Support
 If you encounter problems or have suggestions:
 
@@ -192,7 +196,7 @@ System information (OS, Python version)
 Video format and source details
 Error messages and logs
 Steps to reproduce
-🏆 Awards & Recognition
+
 This innovative accessibility tool demonstrates how creative programming can break down barriers and make visual media accessible to everyone. The sophisticated image processing pipeline and robust error handling make it suitable for both experimental use and practical accessibility applications.
 
 ⭐ Star this repository if you find it useful! ⭐
