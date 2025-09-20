@@ -375,6 +375,7 @@ def play_video_braille(
     audio_volume: float = 1.0,
     audio_player: Optional[str] = None,
     audio_resync: bool = False,  # If True, re-sync audio on restarts/skips (may cause stutter)
+    sync_to_audio: bool = True,  # If True, disable FPS limit when audio is enabled
     debug: bool = False,
     on_error: str = "continue",  # or "stop"
     max_bad_reads: int = 60,
@@ -408,8 +409,16 @@ def play_video_braille(
     src_fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
     if src_fps <= 0 or src_fps != src_fps:  # NaN check
         src_fps = 24.0
+
     target_fps = min(src_fps, fps_limit) if fps_limit else src_fps
     frame_interval = 1.0 / max(1e-6, target_fps)
+
+    # Enhanced timing for audio sync
+    video_start_time = time.perf_counter()
+    expected_video_time = 0.0  # Expected video position in seconds
+    audio_start_offset = seek or 0.0  # Track audio offset for sync
+    sync_check_interval = 60  # Check sync every N frames
+    max_drift_threshold = 0.5  # Max drift in seconds before correction
     try:
         total_frames_reported = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     except Exception:
@@ -431,6 +440,12 @@ def play_video_braille(
     sample_fh = None
     bad_reads = 0
     events: list[dict] = []
+
+    # Auto-disable FPS limit when audio is enabled for sync
+    if audio and sync_to_audio and fps_limit is not None:
+        events.append({"t": 0.0, "type": "sync_auto_fps", "disabled_fps_limit": fps_limit})
+        target_fps = src_fps  # Use source FPS when auto-syncing
+        frame_interval = 1.0 / max(1e-6, target_fps)
 
     # Optional audio via ffplay
     audio_proc = None
@@ -917,11 +932,67 @@ def play_video_braille(
                 # If visual check fails, ignore
                 pass
 
-            # Frame pacing
+            # Enhanced frame pacing with audio sync
             now = time.perf_counter()
-            if now < next_time:
-                time.sleep(max(0.0, next_time - now))
-            next_time += frame_interval
+
+            if audio and sync_to_audio:
+                # Calculate expected video position based on frames processed
+                expected_video_time = frames / target_fps
+                actual_elapsed = now - video_start_time
+
+                # Calculate how far ahead/behind we are
+                time_drift = actual_elapsed - expected_video_time
+
+                # Periodic sync check and correction
+                if frames % sync_check_interval == 0 and frames > 0:
+                    video_position_seconds = expected_video_time + audio_start_offset
+
+                    # Check if drift exceeds threshold
+                    if abs(time_drift) > max_drift_threshold:
+                        events.append({
+                            "t": round(now - t0, 3),
+                            "type": "large_drift_detected",
+                            "drift_ms": round(time_drift * 1000, 1),
+                            "video_pos": round(video_position_seconds, 3),
+                            "correction_needed": True
+                        })
+
+                        # If we're significantly behind, skip some video frames
+                        if time_drift > max_drift_threshold:
+                            skip_frames = int(time_drift * target_fps)
+                            try:
+                                current_frame_pos = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+                                cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame_pos + skip_frames)
+                                events.append({
+                                    "t": round(now - t0, 3),
+                                    "type": "video_skip_correction",
+                                    "skipped_frames": skip_frames,
+                                    "drift_ms": round(time_drift * 1000, 1)
+                                })
+                                # Reset timing after skip
+                                video_start_time = now - expected_video_time
+                            except Exception:
+                                pass
+
+                # Only sleep if we're ahead of schedule
+                if time_drift < 0:
+                    sleep_time = -time_drift
+                    time.sleep(sleep_time)
+
+                # Log significant drift for debugging
+                if debug and abs(time_drift) > 0.1:
+                    events.append({
+                        "t": round(now - t0, 3),
+                        "type": "sync_drift",
+                        "drift_ms": round(time_drift * 1000, 1),
+                        "expected_pos": round(expected_video_time, 3),
+                        "actual_elapsed": round(actual_elapsed, 3)
+                    })
+            else:
+                # Original frame pacing for non-audio playback
+                if now < next_time:
+                    time.sleep(max(0.0, next_time - now))
+                next_time += frame_interval
 
             # Display
             if not no_display:
@@ -1116,6 +1187,8 @@ def parse_args():
     p.add_argument("--audio-volume", type=float, default=1.0, help="Audio volume scalar for ffplay (e.g., 0.8, 1.2)")
     p.add_argument("--audio-player", type=str, default=None, help="Path to ffplay if not on PATH")
     p.add_argument("--audio-resync", action="store_true", help="Re-sync audio on restarts/skips (may cause audible stutter)")
+    p.add_argument("--sync-to-audio", action="store_true", default=True, help="Automatically disable FPS limit when audio is enabled for better sync")
+    p.add_argument("--no-sync-to-audio", action="store_true", help="Disable automatic audio sync optimizations")
     p.add_argument("--debug", action="store_true", help="Add periodic metrics/events to log file")
     p.add_argument("--on-error", choices=["continue","stop"], default="continue", help="Behavior on decode errors")
     p.add_argument("--max-bad-reads", type=int, default=60, help="Max consecutive failed frame reads before stopping")
@@ -1287,6 +1360,7 @@ def main():
         audio_volume=args.audio_volume,
         audio_player=args.audio_player,
         audio_resync=args.audio_resync,
+        sync_to_audio=args.sync_to_audio and not args.no_sync_to_audio,
         debug=args.debug,
         on_error=args.on_error,
         max_bad_reads=args.max_bad_reads,
