@@ -293,7 +293,9 @@ If you encounter problems or have suggestions:
 
 ---
 
-## **⭐ Star this repository if you find it useful! ⭐**
+## **⭐ Star this repository if you find it useful! ⭐** As a bonus for getting this far you can try Hellcat's current settings!
+
+python video_braille.py "D:\Cast Away (2000).mkv" --mode color-braille --width 120 --fps-limit 12 --aspect 0.56 --adaptive gaussian --block-size 21 --adaptive-c 8 --clahe 2.0 --gamma 0.88 --blur-kernel 1 --audio --backend ffmpeg --log-file cast_away_run.json --restart-on-stall --max-restarts 50 --restart-seek-back 2.0 --stall-skip-forward 5.0
 
 *Making the visual world accessible, one Braille dot at a time.*
 
