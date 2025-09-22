@@ -297,7 +297,7 @@ If you encounter problems or have suggestions:
 
 *Making the visual world accessible, one Braille dot at a time.*
 
-This innovative accessibility tool demonstrates how creative programming can break down barriers and make visual media accessible to everyone. The sophisticated image processing pipeline and robust error handling make it suitable for both experimental use and practical accessibility applications.
+The sophisticated image processing pipeline and robust error handling make it suitable for both experimental use and practical applications.
 
 ![Video Braille Demo](https://github.com/user-attachments/assets/9d10b4a0-78bf-4fae-bdc4-765e48fdf264)
 
